@@ -1,15 +1,8 @@
-# %pylab inline
 import matplotlib.pyplot as plt
-#import h5py
-#import pylab as pl
-#from sklearn.cross_validation import train_test_split
 import numpy as np
-#import scipy
 import seaborn as sns
-#from spectral import imshow
 from collections import Counter
 import random
-#import pickle
 
 ##loading images for input and target image
 import scipy.io as io
@@ -86,7 +79,7 @@ for i in range(len(n_input_patches)):
     for j in range(len(n_input_patches[i])):
         n_input_patches[i][j] -= np.mean(n_input_patches[i][j])
 
-print "Normalization finished"
+print "Normalization Process finished"
 
 print "Making training and test sets"
 #------------------------Making train and test splits---------------------
@@ -136,20 +129,35 @@ test_dict["test_patches"] = test_patches
 test_dict["test_labels"] = test_labels
 
 print "Making .mat files"
-## Converting test and train data into files
-io.savemat("../data/train.mat",train_dict)
-# with h5py.File("../data/train.h5",'w') as hf1:
-# 	hf1.create_dataset("train_patches",data = train_patches)
-# 	hf1.create_dataset("train_labels",data = train_labels)
-print "Train Data Produced"
-# np.savetxt("../data/train_labels.txt",train_labels)
-# # print "Train Labels Produced"
-# with h5py.File("../data/test.h5",'w') as hf2:
-# 	hf2.create_dataset("train_patches",data = test_patches)
-# 	hf2.create_dataset("train_labels",data = test_labels) 
-io.savemat("../data/test.mat",test_dict)
-print "Test Data Produced"
-# np.savetxt("../data/test_labels.txt",test_labels)
-# print "Test Labels Produced"
 
-print "Preprocessing Complete --- Files Generated \t train.mat, \t test.mat"
+# Creating 30 .mat files for training set , because scipy was not 
+# able to write all the data into one .mat file
+for i in range(31):
+    train_dict = {}
+    if i == 30:
+        start = i * 1000
+        end = len(train_patches) + 1
+    else:    
+        start = i * 1000
+        end = (i+1) * 1000
+    file_name = "../data/train/" + str(i) + ".mat"
+    train_dict["train_patch"] = train_patches[start:end]
+    train_dict["train_labels"] = train_labels[start:end]
+    io.savemat(file_name,train_dict)
+
+# Creating 3 .mat files for test set
+
+for i in range(3):
+    test_dict = {}
+    if i == 2:
+        start = i * 1000
+        end = len(test_patches) + 1
+    else:
+        start = i * 1000
+        end = (i+1) * 1000
+    file_name = "../data/test/" + str(i) + ".mat"
+    test_dict["test_patch"] = test_patches[start:end]
+    test_dict["test_labels"] = test_labels[start:end]
+    io.savemat(file_name,test_dict)
+
+print "Preprocessing Complete --- Data in folders train , \t test"
