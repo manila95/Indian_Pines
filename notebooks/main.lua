@@ -7,6 +7,7 @@ require 'torch'
 
 --  --------------------------- Reading In the Training Data --------------------------
 
+print("Loading Data ")
 
 train_patches = matio.load("../data/train/0.mat","train_patch")
 train_labels = matio.load("../data/train/0.mat","train_labels")
@@ -17,6 +18,7 @@ for i = 1, 30 do
 	label = matio.load(file_name,"train_labels")
 	train_patches = torch.cat(train_patches,patch,1)
 	train_labels = torch.cat(train_labels,label,1)
+	print(i)
 end
 
 print("Training Data Loaded")
@@ -33,25 +35,6 @@ for i = 1, 2 do
 end
 
 print("Test Data Loaded")
-
-
--- --------------------------- Defining The Convolutional Neural Network-----------------------
-
-
-model = nn.Sequential()
-model:add(nn.SpatialConvolution(220,500,5,5))
-model:add(nn.ReLU())
-model:add(nn.SpatialMaxPooling(2,2,2,2))
-model:add(nn.SpatialConvolution(6,100,5,5))
-model:add(nn.ReLU())
-model:add(nn.SpatialMaxPooling(2,2,2,2))
-model:add(nn.View(100*4*4))
-model:add(nn.Linear(16*4*4, 200))
-model:add(nn.ReLU())
-model:add(nn.Linear(120, 84))
-model:add(nn.ReLU())
-model:add(nn.Linear(84, 16))
-model:add(nn.LogSoftMax())
 
 
 
