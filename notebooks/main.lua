@@ -153,31 +153,147 @@ function train(dataset)
 	print('<trainer> on training set:')
 	print("<trainer> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
 
+	for i = 1, train_patches:size(1),opt.batchSize do
+		-- creating mini batch
+		local inputs = torch.Tensor(opt.batchSize,220, 28, 28)
+		local targets = torch.Tensor(opt.batchSize)
+		local j = 1
+		for k = t, math.min(t+opt.batchSize-1, train_patches:size(1)) do
+			   -- load new sample
+            local sample = dataset[i]
+			local input = sample[1]:clone()
+			local _,target = sample[2]:clone():max(1)
+			target = target:squeeze()
+			inputs[j] = input
+			targets[j] = target
+			j = j + 1
+		end
 
+		-- create closure to evaluate f(X) and df/dX
+		local feval = function(x)
+			 -- just in case:
+			collectgarbage()
+
+			 -- get new parameters
+			if x ~= parameters then
+			parameters:copy(x)
+			end
+
+			 -- reset gradients
+			gradParameters:zero()
+
+			 -- evaluate function for complete mini batch
+			local outputs = model:forward(inputs)
+			local f = criterion:forward(outputs, targets)
+
+			 -- estimate df/dW
+			local df_do = criterion:backward(outputs, targets)
+			model:backward(inputs, df_do)
+
+			-- penalties (L1 and L2):
+			if opt.coefL1 ~= 0 or opt.coefL2 ~= 0 then
+			-- locals:
+			local norm,sign= torch.norm,torch.sign
+
+			-- Loss:
+			f = f + opt.coefL1 * norm(parameters,1)
+			f = f + opt.coefL2 * norm(parameters,2)^2/2
+
+			-- Gradients:
+			gradParameters:add( sign(parameters):mul(opt.coefL1) + parameters:clone():mul(opt.coefL2) )
+			end
+
+			-- update confusion
+			for i = 1,opt.batchSize do
+			confusion:add(outputs[i], targets[i])
+			end
+
+			-- return f and df/dX
+			return f,gradParameters
+		end
+
+		-- Perform SGD step:
+		sgdState = sgdState or {
+		learningRate = opt.learningRate,
+		momentum = opt.momentum,
+		learningRateDecay = 5e-7
+		}
+		optim.sgd(feval, parameters, sgdState)
+
+		-- disp progress
+		xlua.progress(t, test_patches:size(1))
+
+	-- time taken
+	time = sys.clock() - time
+	time = time / dataset:size()
+	print("<trainer> time to learn 1 sample = " .. (time*1000) .. 'ms')
+
+	-- print confusion matrix
+	print(confusion)
+	trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
+	confusion:zero()
+
+	-- save/log current net
+	local filename = paths.concat(opt.save, 'mnist.net')
+	os.execute('mkdir -p ' .. sys.dirname(filename))
+	if paths.filep(filename) then
+		os.execute('mv ' .. filename .. ' ' .. filename .. '.old')
+	end
+	print('<trainer> saving network to '..filename)
+	-- torch.save(filename, model)
+
+	-- next epoch
+	epoch = epoch + 1
 
 end
-
-
-trainer = nn.StochasticGradient(net, criterion)
-trainer.learningRate = 0.001
-trainer.maxIteration = 10
-
-trainer:train(trainset)
 
 -- ----------------------------        Testing The Network        -----------------------------------
 
+-- test function
+function test(dataset)
+   -- local vars
+   local time = sys.clock()
 
-correct = 0
-for i=1,10000 do
-    local groundtruth = testset.label[i]
-    local prediction = net:forward(testset.data[i])
-    local confidences, indices = torch.sort(prediction, true)  -- true means sort in descending order
-    if groundtruth == indices[1] then
-        correct = correct + 1
-    end
+   -- test over given dataset
+   print('<trainer> on testing Set:')
+   for t = 1,dataset:size(),opt.batchSize do
+      -- disp progress
+      xlua.progress(t, dataset:size())
+
+      -- create mini batch
+      local inputs = torch.Tensor(opt.batchSize,1,geometry[1],geometry[2])
+      local targets = torch.Tensor(opt.batchSize)
+      local k = 1
+      for i = t,math.min(t+opt.batchSize-1,dataset:size()) do
+         -- load new sample
+         local sample = dataset[i]
+         local input = sample[1]:clone()
+         local _,target = sample[2]:clone():max(1)
+         target = target:squeeze()
+         inputs[k] = input
+         targets[k] = target
+         k = k + 1
+      end
+
+      -- test samples
+      local preds = model:forward(inputs)
+
+      -- confusion:
+      for i = 1,opt.batchSize do
+         confusion:add(preds[i], targets[i])
+      end
+   end
+
+   -- timing
+   time = sys.clock() - time
+   time = time / dataset:size()
+   print("<trainer> time to test 1 sample = " .. (time*1000) .. 'ms')
+
+   -- print confusion matrix
+   print(confusion)
+   testLogger:add{['% mean class accuracy (test set)'] = confusion.totalValid * 100}
+   confusion:zero()
 end
-
-print(correct, 100*correct/10000 .. ' % ')
 
 
 
