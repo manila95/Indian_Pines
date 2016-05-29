@@ -32,20 +32,18 @@ torch.setnumthreads(opt.threads)
 
 print('===> Setting number of threads to ' .. torch.getnumthreads())
 
+torch.setdefaulttensortype('torch.FloatTensor')
 
 -- ----------------------------------------- Processor Selection - CPU or GPU ----------------------------------------------
 
 if opt.type == "cuda" then
    require 'cunn'
    require 'cutorch'
-   torch.setdefaulttensortype('torch.CudaTensor')
    print(sys.COLORS.red ..  '===> switching to CUDA')
    cutorch.setDevice(opt.devid)
    local devid = cutorch.getDevice()
    local gpu_info = cutorch.getDeviceProperties(devid)
    print(sys.COLORS.red ..  '===> using GPU #' .. devid .. ' ' .. gpu_info.name .. ' (' .. math.ceil(gpu_info.totalGlobalMem/1024/1024/1024) ..  'GB)')
-else
-   torch.setdefaulttensortype('torch.FloatTensor')
 end
 
 
@@ -143,6 +141,12 @@ function train(dataset)
          inputs[k] = input
          targets[k] = target
          k = k + 1
+      end
+
+      -- Transfering mini batch to GPU
+      if opt.type == 'cuda' then
+         inputs = inputs:cuda()
+         targets = targets:cuda()
       end
 
       -- Function Closure for calculating f(X) and df/dX
@@ -247,6 +251,12 @@ function test(dataset)
          inputs[k] = input
          targets[k] = target
          k = k + 1
+      end
+      
+      -- Transfering mini batch to GPU
+      if opt.type == 'cuda' then
+         inputs = inputs:cuda()
+         targets = targets:cuda()
       end
 
       -- Making Predictions
