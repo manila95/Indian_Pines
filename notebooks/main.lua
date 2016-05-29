@@ -10,7 +10,9 @@ require 'paths'
 ------------------------------------------- Setting the Command Line Options --------------------------------------------------
 
 local opt = lapp[[
-   --train            (default 31000)        train size
+   --type             (default cuda)        cuda for gpu else cpu
+   --devid            (default 1)           id for the GPU
+   --train            (default 31000)       train size
    --test             (default 4000)        test size
    -r,--learningRate  (default 0.05)        learning rate
    -b,--batchSize     (default 10)          batch size
@@ -30,7 +32,21 @@ torch.setnumthreads(opt.threads)
 
 print('===> Setting number of threads to ' .. torch.getnumthreads())
 
-torch.setdefaulttensortype('torch.FloatTensor')
+
+-- ----------------------------------------- Processor Selection - CPU or GPU ----------------------------------------------
+
+if opt.type == "cuda" then
+   require 'cunn'
+   require 'cutorch'
+   torch.setdefaulttensortype('torch.CudaTensor')
+   print(sys.COLORS.red ..  '===> switching to CUDA')
+   cutorch.setDevice(opt.devid)
+   local devid = cutorch.getDevice()
+   local gpu_info = cutorch.getDeviceProperties(devid)
+   print(sys.COLORS.red ..  '===> using GPU #' .. devid .. ' ' .. gpu_info.name .. ' (' .. math.ceil(gpu_info.totalGlobalMem/1024/1024/1024) ..  'GB)')
+else
+   torch.setdefaulttensortype('torch.FloatTensor')
+end
 
 
 -- ------------------------------------------- Defining the classes --------------------------------------------------------
@@ -59,13 +75,19 @@ model:add(nn.LogSoftMax())
 -- Retrieve parameters and gradients
 parameters,gradParameters = model:getParameters()
 
-
 print('===> Using model:')
 print(model)
 
 -------------------------------------------------------- Defining the Loss Function --------------------------------------------------
 
 criterion = nn.ClassNLLCriterion()
+
+-------------------------------------------------------- Cuda Conversion For Model and Loss ------------------------------------------
+
+if opt.type == "cuda" then
+   model:cuda()
+   criterion:cuda()
+end
 
 -------------------------------------------------------- Loading the train and test data ---------------------------------------------
 
