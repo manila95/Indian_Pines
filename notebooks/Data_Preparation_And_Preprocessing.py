@@ -72,12 +72,10 @@ plt.title('Class distribution')
 plt.show()
 
 ## Mean Normalization
-
-print "Normalizing"
-
+mean_image = np.mean(n_input_patches,axis = 0)
 for i in range(len(n_input_patches)):
     for j in range(len(n_input_patches[i])):
-        n_input_patches[i][j] -= np.mean(n_input_patches[i][j])
+        n_input_patches[i][j] -= mean_image[j]
 
 print "Normalization Process finished"
 
