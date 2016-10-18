@@ -78,8 +78,10 @@ def return_patches(input_image, target_image, PATCH_SIZE):
                 
     return input_patches, targets
 
-train_patches, train_targets = return_patches(train_image, train_labels, 21)
-test_patches, test_targets = return_patches(test_image, test_labels, 21)
+
+PATCH_SIZE = 21
+train_patches, train_targets = return_patches(train_image, train_labels, PATCH_SIZE)
+test_patches, test_targets = return_patches(test_image, test_labels, PATCH_SIZE)
 
 # Neglecting all the patches belonging to class 9 and 5 in train and test image
 
@@ -136,7 +138,8 @@ n_test_labels = []
 n_val_patches = []
 n_val_labels = []
 for c in list(set(test_labels)):
-	temp = []
+	tempp = []
+	templ = []
 	for i, target in enumerate(test_labels):
 		if target == c:
 			tempp.append(test_patches[i])
@@ -188,7 +191,7 @@ for i in range(n_val_file):
     else:
         start = i * 500
         end = (i+1) * 500
-    file_name = "../data/test" + "_" + str(PATCH_SIZE) + "_" + str(i) + ".mat"
+    file_name = "../data/val" + "_" + str(PATCH_SIZE) + "_" + str(i) + ".mat"
     test_dict["test_patch"] = n_test_patches[start:end]
     test_dict["test_labels"] = n_test_labels[start:end]
     io.savemat(file_name,test_dict)
